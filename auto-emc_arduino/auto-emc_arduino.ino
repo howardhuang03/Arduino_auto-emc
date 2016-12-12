@@ -1,3 +1,5 @@
+#include <Arduino.h>
+
 #include <SoftwareSerial.h>
 
 #define pHSensorPin  1    // pH meter Analog output to Arduino Analog Input 0
@@ -13,7 +15,7 @@ float pHTransfer (float data) {
 float pHSensorRead() {
   unsigned long int avgValue = 0;  // Store the average value of the sensor feedback
   int buf[windowSize], temp;
-  
+
   // Get sample value from the sensor for smooth the value
   for(int i = 0; i < windowSize; i++) {
     buf[i] = analogRead(pHSensorPin);
@@ -38,13 +40,13 @@ float pHSensorRead() {
 
   float phValue = (float)avgValue / 6;
   phValue = pHTransfer(phValue);
-  
+
   return phValue;
 }
 
 void pHDataPrint(float data) {
-  Serial.print(" pH:");  
-  Serial.print(data, 2);
+  Serial.print("pH:");
+  Serial.println(data, 2);
 }
 
 void setup() {
@@ -55,5 +57,5 @@ void setup() {
 void loop() {
   float phData = pHSensorRead();
   pHDataPrint(phData);
+  delay(5000);
 }
-

@@ -26,9 +26,7 @@ void wifiCb(void* response)
   if (res.getArgc() == 1) {
     res.popArgs((uint8_t*)&status, 4);
     if (status == STATION_GOT_IP) {
-      debugPort.println("WIFI CONNECTED");
-      debugPort.println("ARDUINO: mqtt connect to broker");
-      delay(500);
+      debugPort.println("WIFI CONNECTED & mqtt connect to broker");
       mqtt.lwt("lwt", "offline", 0, 0);
       //mqtt.connect("10.0.1.7", 1883, false);
       wifiConnected = true;
@@ -43,9 +41,6 @@ void wifiCb(void* response)
 void mqttConnected(void* response) {
   debugPort.println("MQTT connected");
   mqttLinked = true;
-  //mqtt.subscribe("/topic/0"); //or mqtt.subscribe("topic"); /*with qos = 0*/
-  //mqtt.subscribe("/topic/1");
-  //mqtt.subscribe("/topic/2");
   mqtt.subscribe("topic999");
   mqtt.publish("topic99", "MQTT connected");
 }
@@ -59,18 +54,17 @@ void mqttData(void* response)
 {
   RESPONSE res(response);
 
-  debugPort.print("Received: topic=");
+  debugPort.print("Received: topic = ");
   String topic = res.popString();
   debugPort.println(topic);
 
-  debugPort.print("data=");
+  debugPort.print("data = ");
   String data = res.popString();
   debugPort.println(data);
-
 }
 
 void mqttPublished(void* response) {
-  debugPort.print("Data published");
+  debugPort.println("Data published");
 }
 
 float pHTransfer (float data) {
@@ -89,8 +83,8 @@ float pHSensorRead() {
   }
 
   // Sort the analog data
-  for (int i = 0; i < 9; i++) {
-    for (int j = i + 1; j < 10; j++) {
+  for (int i = 0; i < windowSize - 1; i++) {
+    for (int j = i + 1; j < windowSize; j++) {
       if (buf[i] > buf[j]) {
         temp = buf[i];
         buf[i] = buf[j];
@@ -118,42 +112,43 @@ void pHDataPrint(float data) {
 void setup() {
   debugPort.begin(115200);
   i2cuart.begin(9600);
-  esp.enable();
-  delay(500);
-  esp.reset();
-  delay(500);
-  debugPort.println("Waiting for ESP");
-  while (!esp.ready());
 
-  debugPort.println("ARDUINO: setup mqtt client");
+  /*setup mqtt & callback  */
+  debugPort.println("Setup mqtt client");
   if (!mqtt.begin("arduino", "", "", 120, false)) {
-    debugPort.println("ARDUINO: fail to setup mqtt");
+    debugPort.println("Fail to setup mqtt");
     while (1);
   }
-
-  /* setup wifi */
-  debugPort.println("ARDUINO: setup wifi");
-  esp.wifiCb.attach(&wifiCb);
-  esp.wifiConnect("", "");
-
-  /*setup mqtt events */
   mqtt.connectedCb.attach(&mqttConnected);
   mqtt.disconnectedCb.attach(&mqttDisconnected);
   mqtt.publishedCb.attach(&mqttPublished);
   mqtt.dataCb.attach(&mqttData);
 
-  //debugPort.println("ARDUINO: setup mqtt lwt");
-  //mqtt.lwt("lwt", "offline", 0, 0); //or mqtt.lwt("/lwt", "offline");
+  /* wifi setup delay 15s for stability */
+  delay(15000);
+  esp.enable();
+  delay(500);
+  esp.reset();
+  delay(500);
+  debugPort.println("Setup wifi");
+  while (!esp.ready());
+  esp.wifiCb.attach(&wifiCb);
+  esp.wifiConnect("", "");
 
-  debugPort.println("ARDUINO: system started");
+  debugPort.println("System ready");
 }
 
 void loop() {
+  char str_temp[6], buf[100];
   float phData = pHSensorRead();
-  //pHDataPrint(phData);
+
+  dtostrf(phData, 4, 2, str_temp);
+  sprintf(buf, "%lu, %s", millis(), str_temp);
+
   esp.process();
   if (wifiConnected && mqttLinked) {
-    mqtt.publish("topic99", "123");
+    mqtt.publish("topic99", buf);
   }
+
   delay(5000);
 }

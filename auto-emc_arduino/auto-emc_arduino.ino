@@ -1,6 +1,7 @@
 #include <Arduino.h>
 #include <Wire.h>
 #include <SPI.h>
+#include <Timer.h>
 #include <SC16IS750.h>
 #include <espduino.h>
 #include <mqtt.h>
@@ -14,9 +15,6 @@ struct SensorInfo {
 
 #define pHSensorPin  1    // pH meter Analog output to Arduino Analog Input 0
 
-#define wifiDelay  15 * 1000 // Delay the wifi setup time for stability
-#define updateTime 30 * 60 * 1000 // Read sensor data per updataTime
-
 #define windowSize  10    // Sampling window size for sensor data
 #define centerSize   6    // Center window size for sensor data
 
@@ -25,12 +23,16 @@ struct SensorInfo {
 #define dataTopic "channels/local/data"
 #define cmdTopic "channels/local/cmd"
 
+Timer t;
 SC16IS750 i2cuart = SC16IS750(SC16IS750_PROTOCOL_I2C, SC16IS750_ADDRESS_AA);
 ESP esp(&i2cuart, &debugPort, 4);
 MQTT mqtt(&esp);
 
 boolean wifiConnected = false;
 boolean mqttLinked = false;
+
+const unsigned long wifiDelay = 15 * 1000; // Delay the wifi setup time for stability
+const unsigned long updateDelay = 30 * 1000; // Update sensor data per updataTime
 
 void wifiCb(void* response)
 {
@@ -57,7 +59,6 @@ void mqttConnected(void* response) {
   sprintf(topic, "%s/%s", cmdTopic, deviceName);
   mqttLinked = true;
   mqtt.subscribe(topic);
-  mqtt.publish(dataTopic, "MQTT connected");
 }
 
 void mqttDisconnected(void* response) {
@@ -123,7 +124,23 @@ void pHDataPrint(float data) {
   Serial.println(data, 2);
 }
 
-void Data2String(struct SensorInfo *info, char *buf) {
+void updateSensorInfo() {
+  char buf[100];
+  SensorInfo info;
+
+  info.T = 0;
+  info.PH = pHSensorRead();
+  info.DO = 0;
+  info.CON = 0;
+
+  setData2String(&info, buf);
+
+  if (wifiConnected && mqttLinked) {
+    mqtt.publish(dataTopic, buf);
+  }
+}
+
+void setData2String(struct SensorInfo *info, char *buf) {
   int len = sizeof(struct SensorInfo) / sizeof(float);
   char str_temp[8];
   float *ptr = (float *)info;
@@ -135,11 +152,8 @@ void Data2String(struct SensorInfo *info, char *buf) {
   }
 }
 
-void setup() {
-  debugPort.begin(115200);
-  i2cuart.begin(9600);
-
-  /*setup mqtt & callback  */
+void setupMqtt() {
+  /* Setup mqtt & callback  */
   debugPort.println("Setup mqtt client");
   if (!mqtt.begin("arduino", "", "", 120, false)) {
     debugPort.println("Fail to setup mqtt");
@@ -149,34 +163,28 @@ void setup() {
   mqtt.disconnectedCb.attach(&mqttDisconnected);
   mqtt.publishedCb.attach(&mqttPublished);
   mqtt.dataCb.attach(&mqttData);
+}
 
-  /* wifi setup delay 15s for stability */
-  delay(wifiDelay);
+void setupWifi() {
+  /* Setup wifi */
   esp.enable();
   esp.reset();
   debugPort.println("Setup wifi");
   while (!esp.ready());
   esp.wifiCb.attach(&wifiCb);
   esp.wifiConnect("", "");
+}
 
-  debugPort.println("System ready");
+void setup() {
+  debugPort.begin(115200);
+  i2cuart.begin(9600);
+  // Set timer
+  t.after(0, setupMqtt);
+  t.after(wifiDelay, setupWifi);
+  t.every(updateDelay, updateSensorInfo);
 }
 
 void loop() {
-  char buf[100];
-  SensorInfo info;
-
-  info.T = 0;
-  info.PH = pHSensorRead();
-  info.DO = 0;
-  info.CON = 0;
-
-  Data2String(&info, buf);
-
   esp.process();
-  if (wifiConnected && mqttLinked) {
-    mqtt.publish(dataTopic, buf);
-  }
-
-  delay(5000);
+  t.update();
 }

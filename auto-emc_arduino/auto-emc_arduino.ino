@@ -32,7 +32,7 @@ boolean wifiConnected = false;
 boolean mqttLinked = false;
 
 const unsigned long wifiDelay = 15 * 1000; // Delay the wifi setup time for stability
-const unsigned long updateDelay = 30 * 1000; // Update sensor data per updataTime
+const unsigned long updateDelay = 300000; // Update sensor data per updataTime millisecond
 
 void wifiCb(void* response)
 {

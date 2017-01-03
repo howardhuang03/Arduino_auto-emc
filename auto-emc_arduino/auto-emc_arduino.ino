@@ -39,6 +39,10 @@ boolean mqttLinked = false;
 const unsigned long wifiDelay = 15 * 1000; // Delay the wifi setup time for stability
 const unsigned long updateDelay = 300000; // Update sensor data per updataTime millisecond
 
+// PH calibration value
+float Ph7Reading = 610; // PH7 Buffer Solution Reading
+float Ph4Reading = 400; // PH4 Buffer Solution Reading.
+
 void wifiCb(void* response)
 {
   uint32_t status;
@@ -64,6 +68,7 @@ void mqttConnected(void* response) {
   sprintf(topic, "%s/%s", cmdTopic, deviceName);
   mqttLinked = true;
   mqtt.subscribe(topic);
+  updateSensorInfo();
 }
 
 void mqttDisconnected(void* response) {
@@ -88,8 +93,12 @@ void mqttPublished(void* response) {
 }
 
 float pHTransfer (float data) {
-  float phValue = (float)((720 + (400 / 3) - data) * 3 * 0.01);
-  return data;
+  float Ph7Buffer = 7; // For PH7 buffer solution's PH value
+  float Ph4Buffer = 4; // For PH4 buffer solution's PH value
+  float varA = (float)(Ph7Buffer - Ph4Buffer);
+  float varB = (float)((Ph7Reading * Ph4Buffer) - (Ph4Reading * Ph7Buffer));
+  float phValue = (float)((varA * data + varB) / (Ph7Reading - Ph4Reading));
+  return phValue;
 }
 
 float pHSensorRead() {
@@ -130,8 +139,8 @@ float tempSensorRead() {
 }
 
 void SensorDataPrint(char *buf) {
-  Serial.print("Data: ");
-  Serial.println(buf);
+  debugPort.print("Data: ");
+  debugPort.println(buf);
 }
 
 void updateSensorInfo() {

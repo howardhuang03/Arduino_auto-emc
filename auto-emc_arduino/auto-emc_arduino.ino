@@ -5,6 +5,8 @@
 #include <SC16IS750.h>
 #include <espduino.h>
 #include <mqtt.h>
+#include <OneWire.h>
+#include <DallasTemperature.h>
 
 struct SensorInfo {
   float T;
@@ -13,7 +15,8 @@ struct SensorInfo {
   float CON;
 };
 
-#define pHSensorPin  1    // pH meter Analog output to Arduino Analog Input 0
+#define pHSensorPin  0    // pH meter Analog output to Arduino analog input
+#define oneWireBus   2    // Data wire is plugged into Arduino digital input
 
 #define windowSize  10    // Sampling window size for sensor data
 #define centerSize   6    // Center window size for sensor data
@@ -26,6 +29,8 @@ struct SensorInfo {
 Timer t;
 SC16IS750 i2cuart = SC16IS750(SC16IS750_PROTOCOL_I2C, SC16IS750_ADDRESS_AA);
 ESP esp(&i2cuart, &debugPort, 4);
+OneWire oneWire(oneWireBus);
+DallasTemperature sensors(&oneWire);
 MQTT mqtt(&esp);
 
 boolean wifiConnected = false;
@@ -119,21 +124,27 @@ float pHSensorRead() {
   return phValue;
 }
 
-void pHDataPrint(float data) {
-  Serial.print("pH:");
-  Serial.println(data, 2);
+float tempSensorRead() {
+  sensors.requestTemperatures();
+  return sensors.getTempCByIndex(0);
+}
+
+void SensorDataPrint(char *buf) {
+  Serial.print("Data: ");
+  Serial.println(buf);
 }
 
 void updateSensorInfo() {
   char buf[100];
   SensorInfo info;
 
-  info.T = 0;
+  info.T = tempSensorRead();
   info.PH = pHSensorRead();
   info.DO = 0;
   info.CON = 0;
 
   setData2String(&info, buf);
+  SensorDataPrint(buf);
 
   if (wifiConnected && mqttLinked) {
     mqtt.publish(dataTopic, buf);
@@ -178,6 +189,7 @@ void setupWifi() {
 void setup() {
   debugPort.begin(115200);
   i2cuart.begin(9600);
+  sensors.begin();
   // Set timer
   t.after(0, setupMqtt);
   t.after(wifiDelay, setupWifi);

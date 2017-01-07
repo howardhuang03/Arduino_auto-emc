@@ -40,8 +40,8 @@ const unsigned long wifiDelay = 15 * 1000; // Delay the wifi setup time for stab
 const unsigned long updateDelay = 300000; // Update sensor data per updataTime millisecond
 
 // PH calibration value
-float Ph7Reading = 610; // PH7 Buffer Solution Reading
-float Ph4Reading = 400; // PH4 Buffer Solution Reading.
+float Ph7Reading = 645; // PH7 Buffer Solution Reading
+float Ph4Reading = 760; // PH4 Buffer Solution Reading.
 
 void wifiCb(void* response)
 {

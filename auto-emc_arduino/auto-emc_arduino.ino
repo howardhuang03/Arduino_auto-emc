@@ -15,6 +15,8 @@ struct SensorInfo {
   float CON;
 };
 
+#define emcVersion   1.0.0
+
 #define pHSensorPin  0    // pH meter Analog output to Arduino analog input
 #define oneWireBus   2    // Data wire is plugged into Arduino digital input
 

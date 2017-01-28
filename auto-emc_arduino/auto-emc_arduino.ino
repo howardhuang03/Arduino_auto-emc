@@ -1,11 +1,10 @@
-#include <Arduino.h>
 #include <Wire.h>
-#include <SPI.h>
 #include <Timer.h>
 #include <SC16IS750.h>
 #include <espduino.h>
 #include <mqtt.h>
 #include <OneWire.h>
+#include <SoftwareSerial.h>
 #include <DallasTemperature.h>
 
 struct SensorInfo {
@@ -20,8 +19,8 @@ struct SensorInfo {
 #define pHSensorPin  0    // pH meter Analog output to Arduino analog input
 #define oneWireBus   2    // Data wire is plugged into Arduino digital input
 
-#define windowSize  10    // Sampling window size for sensor data
-#define centerSize   6    // Center window size for sensor data
+#define doSensorRx  3    // DO sensor digital rx pin using uart protoc
+#define doSensorTx  4    // DO sensor digital tx pin using uart protoc
 
 #define debugPort Serial
 #define deviceName "EMC00"
@@ -32,7 +31,8 @@ Timer t;
 SC16IS750 i2cuart = SC16IS750(SC16IS750_PROTOCOL_I2C, SC16IS750_ADDRESS_AA);
 ESP esp(&i2cuart, &debugPort, 4);
 OneWire oneWire(oneWireBus);
-DallasTemperature sensors(&oneWire);
+DallasTemperature tempSensor(&oneWire);
+SoftwareSerial doSensor(doSensorTx, doSensorRx);
 MQTT mqtt(&esp);
 
 boolean wifiConnected = false;
@@ -104,6 +104,8 @@ float pHTransfer (float data) {
 }
 
 float pHSensorRead() {
+  byte windowSize = 10;  // Sampling window size for sensor data
+  byte centerSize = 6;   // Center window size for sensor data
   unsigned long int avgValue = 0;  // Store the average value of the sensor feedback
   int buf[windowSize], temp;
 
@@ -136,8 +138,57 @@ float pHSensorRead() {
 }
 
 float tempSensorRead() {
-  sensors.requestTemperatures();
-  return sensors.getTempCByIndex(0);
+  tempSensor.requestTemperatures();
+  return tempSensor.getTempCByIndex(0);
+}
+
+float doSensorRead(float temp) {
+  float DO = 0.0, temp_tmp = 0.0;
+  char buf[32], str_temp[8];
+
+  // Update temperature to do sensor board
+  if (temp < 0 || temp > 100) {
+    temp_tmp = 20.0;
+  } else {
+    temp_tmp = temp;
+  }
+  dtostrf(temp_tmp, 4, 2, str_temp);
+  sprintf(buf, "T,%s\r", str_temp);
+  DO = doSensorSerialRead(buf, 0);
+
+  // Read data from do sensor board
+  sprintf(buf, "R\r");
+  DO = doSensorSerialRead(buf, 1000);
+
+  return DO;
+}
+
+float doSensorSerialRead(char *buf, int delayTime) {
+  float value = 0.0;
+  bool completed = false;
+  String sensorstring = "";
+
+  // Send cmd to do sensor board
+  doSensor.print(buf);
+  delay(delayTime);
+
+  // Read data from do sensor board
+  while (doSensor.available() && !completed) {
+    char inchar = (char)doSensor.read();
+    sensorstring += inchar;
+    if (inchar == '\r') { completed = true;}
+
+    // Check the data string
+    if (completed == true) {
+      if (isdigit(sensorstring[0])) {
+        value = sensorstring.toFloat();
+        sensorstring = "";
+        completed = false;
+      }
+    }
+  }
+
+  return value;
 }
 
 void SensorDataPrint(char *buf) {
@@ -151,7 +202,7 @@ void updateSensorInfo() {
 
   info.T = tempSensorRead();
   info.PH = pHSensorRead();
-  info.DO = 0;
+  info.DO = doSensorRead(info.T);
   info.CON = 0;
 
   setData2String(&info, buf);
@@ -172,6 +223,17 @@ void setData2String(struct SensorInfo *info, char *buf) {
     dtostrf(*(ptr + i), 4, 2, str_temp);
     sprintf(buf, "%s,%s", buf, str_temp);
   }
+}
+
+void setupSensor() {
+  char buf[] = "RESPONSE,0\r";
+
+  debugPort.println("Setup sensor");
+  // Initial sensor pin
+  doSensor.begin(9600);
+  tempSensor.begin();
+  // Disable response code
+  doSensorSerialRead(buf, 0);
 }
 
 void setupMqtt() {
@@ -200,7 +262,7 @@ void setupWifi() {
 void setup() {
   debugPort.begin(115200);
   i2cuart.begin(9600);
-  sensors.begin();
+  setupSensor();
   // Set timer
   t.after(0, setupMqtt);
   t.after(wifiDelay, setupWifi);

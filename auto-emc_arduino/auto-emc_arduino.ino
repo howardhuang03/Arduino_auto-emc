@@ -15,12 +15,13 @@ struct SensorInfo {
 };
 
 #define emcVersion   1.0.0
-
-#define pHSensorPin  0    // pH meter Analog output to Arduino analog input
-#define oneWireBus   2    // Data wire is plugged into Arduino digital input
-
-#define doSensorRx  3    // DO sensor digital rx pin using uart protoc
-#define doSensorTx  4    // DO sensor digital tx pin using uart protoc
+// Analog pin definition
+#define pHSensorRx    0    // PH sensor analog rx
+#define conSensorRx   1    // Conductivity sensor analog rx
+// Digital pin definition
+#define tempSensorRx  2    // Temperature sensor digital rx
+#define doSensorRx    3    // DO sensor digital rx using uart protoc
+#define doSensorTx    4    // DO sensor digital tx using uart protoc
 
 #define debugPort Serial
 #define deviceName "EMC00"
@@ -30,7 +31,7 @@ struct SensorInfo {
 Timer t;
 SC16IS750 i2cuart = SC16IS750(SC16IS750_PROTOCOL_I2C, SC16IS750_ADDRESS_AA);
 ESP esp(&i2cuart, &debugPort, 4);
-OneWire oneWire(oneWireBus);
+OneWire oneWire(tempSensorRx);
 DallasTemperature tempSensor(&oneWire);
 SoftwareSerial doSensor(doSensorTx, doSensorRx);
 MQTT mqtt(&esp);
@@ -94,6 +95,11 @@ void mqttPublished(void* response) {
   debugPort.println("Data published");
 }
 
+float pHSensorRead() {
+  //return pHTransfer(analogSensorRead(pHSensorRx));
+  return analogSensorRead(pHSensorRx);
+}
+
 float pHTransfer (float data) {
   float Ph7Buffer = 7; // For PH7 buffer solution's PH value
   float Ph4Buffer = 4; // For PH4 buffer solution's PH value
@@ -103,7 +109,11 @@ float pHTransfer (float data) {
   return phValue;
 }
 
-float pHSensorRead() {
+float conSensorRead() {
+  return analogSensorRead(conSensorRx);
+}
+
+float analogSensorRead(byte pin) {
   byte windowSize = 10;  // Sampling window size for sensor data
   byte centerSize = 6;   // Center window size for sensor data
   unsigned long int avgValue = 0;  // Store the average value of the sensor feedback
@@ -111,7 +121,7 @@ float pHSensorRead() {
 
   // Get sample value from the sensor for smooth the value
   for (int i = 0; i < windowSize; i++) {
-    buf[i] = analogRead(pHSensorPin);
+    buf[i] = analogRead(pin);
     delay(10);
   }
 
@@ -131,10 +141,7 @@ float pHSensorRead() {
     avgValue += buf[i];
   }
 
-  float phValue = (float)avgValue / 6;
-  phValue = pHTransfer(phValue);
-
-  return phValue;
+  return (float)avgValue / 6;
 }
 
 float tempSensorRead() {
@@ -203,7 +210,7 @@ void updateSensorInfo() {
   info.T = tempSensorRead();
   info.PH = pHSensorRead();
   info.DO = doSensorRead(info.T);
-  info.CON = 0;
+  info.CON = conSensorRead();
 
   setData2String(&info, buf);
   SensorDataPrint(buf);

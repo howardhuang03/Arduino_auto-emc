@@ -42,9 +42,11 @@ boolean mqttLinked = false;
 const unsigned long wifiDelay = 15 * 1000; // Delay the wifi setup time for stability
 const unsigned long updateDelay = 300000; // Update sensor data per updataTime millisecond
 
-// PH calibration value
 float Ph7Reading = 645; // PH7 Buffer Solution Reading
 float Ph4Reading = 760; // PH4 Buffer Solution Reading.
+
+float con1Reading = 394;    // CON reading in the 1.413 ms/cm solution
+float conSReading = 369.5;  // CON reading in the sea water
 
 void wifiCb(void* response)
 {
@@ -96,8 +98,21 @@ void mqttPublished(void* response) {
 }
 
 float pHSensorRead() {
-  //return pHTransfer(analogSensorRead(pHSensorRx));
-  return analogSensorRead(pHSensorRx);
+  float Ph7Buffer = 7; // For PH7 buffer solution's PH value
+  float Ph4Buffer = 4; // For PH4 buffer solution's PH value
+  float data = analogSensorRead(pHSensorRx);
+  debugPort.print("PH: ");
+  debugPort.println(data);
+  return dataTransfer(data, Ph7Buffer, Ph4Buffer, Ph7Reading, Ph4Reading);
+}
+
+float dataTransfer(float data, float highBuffer, float lowBuffer, float highReading, float lowReading) {
+  float varA = (float)(highBuffer - lowBuffer);
+  float varB = (float)((highReading * lowBuffer) - (lowReading * highBuffer));
+  float varC = (float)(highReading - lowReading);
+  float value = (float)((varA * data + varB) / varC);
+  if (value < 0) value = 0;
+  return value;
 }
 
 float pHTransfer (float data) {
@@ -110,7 +125,12 @@ float pHTransfer (float data) {
 }
 
 float conSensorRead() {
-  return analogSensorRead(conSensorRx);
+  float Con1Buffer = 1.41; // CON value for the 1.413 ms/cm solution
+  float ConSBuffer = 56;     // CON value in the sea
+  float data = analogSensorRead(conSensorRx);
+  debugPort.print("CON: ");
+  debugPort.println(data);
+  return dataTransfer(data, ConSBuffer, Con1Buffer, conSReading, con1Reading);
 }
 
 float analogSensorRead(byte pin) {
@@ -161,36 +181,38 @@ float doSensorRead(float temp) {
   }
   dtostrf(temp_tmp, 4, 2, str_temp);
   sprintf(buf, "T,%s\r", str_temp);
-  DO = doSensorSerialRead(buf, 0);
+  DO = doSensorSerialRead(buf, false);
 
   // Read data from do sensor board
   sprintf(buf, "R\r");
-  DO = doSensorSerialRead(buf, 1000);
+  DO = doSensorSerialRead(buf, true);
 
   return DO;
 }
 
-float doSensorSerialRead(char *buf, int delayTime) {
+float doSensorSerialRead(char *buf, bool flag) {
   float value = 0.0;
-  bool completed = false;
+  bool readFlag = flag;
+  char data[8] = "";
   String sensorstring = "";
 
   // Send cmd to do sensor board
   doSensor.print(buf);
-  delay(delayTime);
 
   // Read data from do sensor board
-  while (doSensor.available() && !completed) {
-    char inchar = (char)doSensor.read();
-    sensorstring += inchar;
-    if (inchar == '\r') { completed = true;}
+  while (readFlag) {
+    if (doSensor.available()) {
+      char inchar = (char)doSensor.read();
+      sensorstring += inchar;
+      if (inchar == '\r') { readFlag = true;}
+    }
 
     // Check the data string
-    if (completed == true) {
+    if (readFlag == true) {
       if (isdigit(sensorstring[0])) {
         value = sensorstring.toFloat();
         sensorstring = "";
-        completed = false;
+        readFlag = false;
       }
     }
   }
@@ -240,7 +262,7 @@ void setupSensor() {
   doSensor.begin(9600);
   tempSensor.begin();
   // Disable response code
-  doSensorSerialRead(buf, 0);
+  doSensorSerialRead(buf, false);
 }
 
 void setupMqtt() {

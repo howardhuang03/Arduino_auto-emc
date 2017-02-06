@@ -40,7 +40,7 @@ boolean wifiConnected = false;
 boolean mqttLinked = false;
 
 const unsigned long wifiDelay = 15 * 1000; // Delay the wifi setup time for stability
-const unsigned long updateDelay = 300000; // Update sensor data per updataTime millisecond
+const unsigned long updateDelay = 10000; // Update sensor data per updataTime millisecond
 
 float Ph7Reading = 645; // PH7 Buffer Solution Reading
 float Ph4Reading = 760; // PH4 Buffer Solution Reading.
@@ -195,24 +195,27 @@ float doSensorSerialRead(char *buf, bool flag) {
   bool readFlag = flag;
   char data[8] = "";
   String sensorstring = "";
+  int tryCount = 1500;
 
   // Send cmd to do sensor board
   doSensor.print(buf);
 
   // Read data from do sensor board
   while (readFlag) {
+    tryCount--;
+    if (!tryCount) {readFlag = false;}
+
     if (doSensor.available()) {
       char inchar = (char)doSensor.read();
       sensorstring += inchar;
-      if (inchar == '\r') { readFlag = true;}
+      if (inchar == '\r') {readFlag = false;}
     }
 
-    // Check the data string
-    if (readFlag == true) {
+    if (!readFlag) {
+      debugPort.print("DO:");
+      debugPort.println(sensorstring);
       if (isdigit(sensorstring[0])) {
         value = sensorstring.toFloat();
-        sensorstring = "";
-        readFlag = false;
       }
     }
   }

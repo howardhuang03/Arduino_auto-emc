@@ -24,14 +24,12 @@
 #define cmdTopic "channels/local/cmd"
 #define MQTT "mqtt"
 
-
 PHSensor phSensor(pHSensorRx);
 TSensor tSensor(tempSensorRx);
 CONSensor conSensor(conSensorRx);
 DOSensor doSensor(doSensorTx, doSensorRx);
 
 void readMqtt() {
-    
   CiaoData data = Ciao.read(MQTT, cmdTopic);
   while (!data.isEmpty()){
     debugPort.print("id=");
@@ -67,13 +65,13 @@ void updateSensorInfo() {
   float PH = pHSensorRead();
   float DO = doSensorRead(T);
   float CON = conSensorRead(T);
-  
+
   String mqttMsg;
   mqttMsg = String("field1=") + String(T, 2);
   mqttMsg += String("&field2=") + String(PH, 2);
   mqttMsg += String("&field3=") + String(DO, 2);
   mqttMsg += String("&field4=") + String(CON, 2);
-  
+
   debugPort.println(mqttMsg);
   Ciao.write(MQTT, dataTopic, mqttMsg);
 }
@@ -81,18 +79,18 @@ void updateSensorInfo() {
 void setup() {
   debugPort.begin(115200);
   debugPort.println("Setup sensor");
-  
+
   phSensor.setDebugStream(&debugPort);
   tSensor.setDebugStream(&debugPort);
   conSensor.setDebugStream(&debugPort);
   doSensor.setDebugStream(&debugPort);
-  
+
   Ciao.begin();
 }
 
-void loop() { 
+void loop() {
   updateSensorInfo();
   delay(15 * 1000);
-  readMqtt();
-  delay(15 * 1000);
+  //readMqtt();
+  //delay(15 * 1000);
 }

@@ -20,7 +20,10 @@
 #define debugPort Serial
 #define deviceName "EMC00"
 //#define dataTopic "channels/local/data"
-#define dataTopic "channels/225785/publish/4T8RYMGPVKKGT3BL"
+// Andy's channel
+//#define dataTopic "channels/225785/publish/4T8RYMGPVKKGT3BL"
+// Howard's channel
+#define dataTopic "channels/207041/publish/Y03Y5CTLEOQL1RQO"
 #define cmdTopic "channels/local/cmd"
 #define MQTT "mqtt"
 

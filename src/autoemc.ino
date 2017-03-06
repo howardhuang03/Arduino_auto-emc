@@ -32,6 +32,11 @@ TSensor tSensor(tempSensorRx);
 CONSensor conSensor(conSensorRx);
 DOSensor doSensor(doSensorTx, doSensorRx);
 
+int delayTime = 15 * 1000; // 15s
+int updateCount = 4 * 6;   // Update to cloud each delay * updateCount
+int count = 0;
+float T_Sum = 0, PH_Sum = 0, DO_Sum = 0, EC_Sum = 0;
+
 void readMqtt() {
   CiaoData data = Ciao.read(MQTT, cmdTopic);
   while (!data.isEmpty()){
@@ -64,19 +69,36 @@ float doSensorRead(float temp) {
 }
 
 void updateSensorInfo() {
+  String mqttMsg;
   float T = tempSensorRead();
   float PH = pHSensorRead();
   float DO = doSensorRead(T);
-  float CON = conSensorRead(T);
+  float EC = conSensorRead(T);
 
-  String mqttMsg;
-  mqttMsg = String("field1=") + String(T, 2);
-  mqttMsg += String("&field2=") + String(PH, 2);
-  mqttMsg += String("&field3=") + String(DO, 2);
-  mqttMsg += String("&field4=") + String(CON, 2);
+  T_Sum += T;
+  PH_Sum += PH;
+  DO_Sum += DO;
+  EC_Sum += EC;
+  count++;
 
-  debugPort.println(mqttMsg);
-  Ciao.write(MQTT, dataTopic, mqttMsg);
+  if (count == updateCount) {
+    // Process average data & send data to cloud
+    mqttMsg = String("field1=") + String(T_Sum / count, 2);
+    mqttMsg += String("&field2=") + String(PH_Sum / count, 2);
+    mqttMsg += String("&field3=") + String(DO_Sum / count, 2);
+    mqttMsg += String("&field4=") + String(EC_Sum / count, 2);
+    debugPort.println(mqttMsg);
+    Ciao.write(MQTT, dataTopic, mqttMsg);
+    resetData();
+  }
+}
+
+void resetData() {
+  T_Sum = 0;
+  PH_Sum = 0;
+  DO_Sum = 0;
+  EC_Sum = 0;
+  count = 0;
 }
 
 void setup() {
@@ -93,7 +115,7 @@ void setup() {
 
 void loop() {
   updateSensorInfo();
-  delay(15 * 1000);
+  delay(delayTime);
   //readMqtt();
   //delay(15 * 1000);
 }

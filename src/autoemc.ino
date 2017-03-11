@@ -8,7 +8,7 @@
 #include "sensors/con_sensor.h"
 #include "sensors/do_sensor.h"
 
-#define emcVersion   1.1.0
+#define emcVersion   1.1.0.beta
 // Analog pin definition
 #define pHSensorRx    A0    // PH sensor analog rx
 #define conSensorRx   A1    // Conductivity sensor analog rx
@@ -73,7 +73,7 @@ void updateSensorInfo() {
   float T = tempSensorRead();
   float PH = pHSensorRead();
   float DO = doSensorRead(T);
-  float EC = conSensorRead(T);
+  float EC = 0; //conSensorRead(T);
 
   T_Sum += T;
   PH_Sum += PH;

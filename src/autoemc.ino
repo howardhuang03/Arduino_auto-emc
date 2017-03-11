@@ -8,7 +8,7 @@
 #include "sensors/con_sensor.h"
 #include "sensors/do_sensor.h"
 
-#define emcVersion   1.1.0.beta
+#define emcVersion   1.1.0
 // Analog pin definition
 #define pHSensorRx    A0    // PH sensor analog rx
 #define conSensorRx   A1    // Conductivity sensor analog rx

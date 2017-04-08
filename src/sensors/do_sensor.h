@@ -9,18 +9,19 @@
 
 class DOSensor : public SensorBase{
 public:
-    
+
     DOSensor(byte pinTx, byte pinRx);
-    
+    int setValue(String s);
     float getValue();
-    
+
     void setTemperature(float t);
+    void setCalibration(float t);
 
 private:
-    
+
     SoftwareSerial sensor;
     float currentTemperature;
-    
+
 };
 
 #endif

@@ -1,7 +1,7 @@
 #include "utils.h"
 
 namespace Utils {
-    
+
     /* template bubble sort function */
     template<typename INDEX_TYPE, typename VALUE_TYPE>
     void sort(VALUE_TYPE *array, INDEX_TYPE size) {
@@ -16,7 +16,7 @@ namespace Utils {
             }
         }
     }
-    
+
     template void sort<>(int*, byte);
 
     /* claculate average value */
@@ -28,11 +28,11 @@ namespace Utils {
         }
         return value / size;
     }
-    
+
     template float average<>(int*, byte);
-    
+
     float analogReadAverage(byte pin, byte size, unsigned long delayTime) {
-        int buf[size];    
+        int buf[size];
         for (int i = 0; i < size; i++) {
             buf[i] = analogRead(pin);
             delay(delayTime);
@@ -43,7 +43,9 @@ namespace Utils {
 
     template<typename T>
     T map(T x, T in_min, T in_max, T out_min, T out_max) {
-        return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
+        float result = (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
+        if (result < 0) result = 0;
+        return result;
     }
 
     template float map<>(float, float, float, float, float);

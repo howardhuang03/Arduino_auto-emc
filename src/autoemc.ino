@@ -32,19 +32,20 @@ TSensor tSensor(tempSensorRx);
 CONSensor conSensor(conSensorRx);
 DOSensor doSensor(doSensorTx, doSensorRx);
 
-int delayTime = 15 * 1000; // 15s
-int updateCount = 4 * 5;   // Update to cloud each delay * updateCount
+int delayTime = 5 * 1000; // 15s
+int updateCount = 12 * 5;   // Update to cloud each delay * updateCount
 int count = 0;
 float T_Sum = 0, PH_Sum = 0, DO_Sum = 0, EC_Sum = 0;
 
-void readMqtt() {
+void readMqttCmd() {
   CiaoData data = Ciao.read(MQTT, cmdTopic);
+
   while (!data.isEmpty()){
     debugPort.print("id=");
     debugPort.println(data.get(0));
-    debugPort.print("sender=");
+    debugPort.print("channel=");
     debugPort.println(data.get(1));
-    debugPort.print("msg=");
+    debugPort.print("payload=");
     debugPort.println(data.get(2));
     data = Ciao.read(MQTT, cmdTopic);
   }
@@ -73,7 +74,7 @@ void updateSensorInfo() {
   float T = tempSensorRead();
   float PH = pHSensorRead();
   float DO = doSensorRead(T);
-  float EC = 0; //conSensorRead(T);
+  float EC = conSensorRead(T);
 
   T_Sum += T;
   PH_Sum += PH;
@@ -121,7 +122,6 @@ void setup() {
 
 void loop() {
   updateSensorInfo();
+  readMqttCmd();
   delay(delayTime);
-  //readMqtt();
-  //delay(15 * 1000);
 }

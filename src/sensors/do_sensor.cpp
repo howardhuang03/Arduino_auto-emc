@@ -46,7 +46,11 @@ void DOSensor::setTemperature(float t) {
 
 void DOSensor::setCalibration(float t) {
   String Calibration = "Cal";
+  this->log("DO sensor calibration, temprature:");
+  this->log(t);
   this->setTemperature(t);
-  delay(100);
+  delay(50);
   this->setValue(Calibration);
+  delay(50);
+  this->getValue();
 }

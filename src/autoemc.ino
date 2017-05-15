@@ -9,7 +9,7 @@
 #include "sensors/con_sensor.h"
 #include "sensors/do_sensor.h"
 
-#define emcVersion   1.1.0
+#define emcVersion   "1.1.0"
 // Analog pin definition
 #define pHSensorRx    A0    // PH sensor analog rx
 #define conSensorRx   A1    // Conductivity sensor analog rx
@@ -142,7 +142,7 @@ String getDeviceName() {
 void setup() {
   debugPort.begin(115200);
   deviceName = getDeviceName();
-  debugPort.println("Start " + deviceName);
+  debugPort.println("Start " + deviceName + ", Version: "  + emcVersion);
 
   phSensor.setDebugStream(&debugPort);
   tSensor.setDebugStream(&debugPort);
@@ -150,7 +150,7 @@ void setup() {
   doSensor.setDebugStream(&debugPort);
 
   Ciao.begin();
-  Ciao.write(MQTT, testTopic, deviceName);
+  Ciao.write(MQTT, testTopic, deviceName + "," + emcVersion);
 }
 
 void loop() {

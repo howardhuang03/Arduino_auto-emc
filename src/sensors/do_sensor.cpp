@@ -9,7 +9,7 @@ DOSensor::DOSensor(byte pT, byte pR)
 
 int DOSensor::setValue(String s) {
     String result = s + String("\r");
-    sensor.print(s); // Write value
+    sensor.print(result); // Write value
     return 0;
 }
 
@@ -17,6 +17,7 @@ float DOSensor::getValue() {
     float v = 0.0f;
     this->setValue("R");
     String result;
+    delay(10);
 
     // read value
     while (sensor.available()) {
@@ -46,11 +47,10 @@ void DOSensor::setTemperature(float t) {
 
 void DOSensor::setCalibration(float t) {
   String Calibration = "Cal";
-  this->log("DO sensor calibration, temprature:");
-  this->log(t);
+  this->log("DO sensor calibration, temprature: " + String(t, 2));
   this->setTemperature(t);
-  delay(50);
+  delay(100);
   this->setValue(Calibration);
-  delay(50);
+  delay(200);
   this->getValue();
 }

@@ -39,6 +39,7 @@ float T_Sum = 0, PH_Sum = 0, DO_Sum = 0, EC_Sum = 0;
 
 void readMqttCmd() {
   CiaoData data = Ciao.read(MQTT, cmdTopic);
+  String msg = "";
 
   while (!data.isEmpty()){
     debugPort.print("id=");
@@ -46,9 +47,15 @@ void readMqttCmd() {
     debugPort.print("channel=");
     debugPort.println(data.get(1));
     debugPort.print("payload=");
+    msg = data.get(2);
     debugPort.println(data.get(2));
     data = Ciao.read(MQTT, cmdTopic);
   }
+
+  if (msg.length() == 0) return;
+
+  // FIXME hard coded DO calibration
+  doSensor.setCalibration(msg.toInt());
 }
 
 float pHSensorRead() {

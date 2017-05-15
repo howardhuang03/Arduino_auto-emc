@@ -1,4 +1,5 @@
 #include <Wire.h>
+#include <EEPROM.h>
 #include <UnoWiFiDevEd.h>
 
 #include "sensors/utils.h"
@@ -18,13 +19,14 @@
 #define doSensorTx    4    // DO sensor digital tx using uart protoc
 
 #define debugPort Serial
-#define deviceName "EMC00"
+#define defaultName "EMC"
 #define dataTopic "channels/local/data"
 // Andy's channel
 //#define dataTopic "channels/225785/publish/4T8RYMGPVKKGT3BL"
 // Howard's channel
 //#define dataTopic "channels/207041/publish/Y03Y5CTLEOQL1RQO"
 #define cmdTopic "channels/local/cmd"
+#define testTopic "channels/local/test"
 #define MQTT "mqtt"
 
 PHSensor phSensor(pHSensorRx);
@@ -36,6 +38,7 @@ int delayTime = 5 * 1000; // 15s
 int updateCount = 12 * 5;   // Update to cloud each delay * updateCount
 int count = 0;
 float T_Sum = 0, PH_Sum = 0, DO_Sum = 0, EC_Sum = 0;
+String deviceName = "";
 
 void readMqttCmd() {
   CiaoData data = Ciao.read(MQTT, cmdTopic);
@@ -115,9 +118,31 @@ void resetData() {
   count = 0;
 }
 
+void writeDeviceNum() {
+  int addr = 0;
+  // Clear EEPROM
+  for (addr = EEPROM.length(); addr >= 0 ; addr--) {
+    EEPROM.write(addr, 0);
+  }
+  // Write EEPROM
+  EEPROM.write(addr, 0);
+  EEPROM.write(addr + 1, 0);
+}
+
+String getDeviceName() {
+  byte num = 0;
+  String name = defaultName;
+  for (int addr = 0; addr < 2; addr++) {
+    num = EEPROM.read(addr);
+    name += String(num, 10);
+  }
+  return name;
+}
+
 void setup() {
   debugPort.begin(115200);
-  debugPort.println("Setup sensor");
+  deviceName = getDeviceName();
+  debugPort.println("Start " + deviceName);
 
   phSensor.setDebugStream(&debugPort);
   tSensor.setDebugStream(&debugPort);
@@ -125,6 +150,7 @@ void setup() {
   doSensor.setDebugStream(&debugPort);
 
   Ciao.begin();
+  Ciao.write(MQTT, testTopic, deviceName);
 }
 
 void loop() {

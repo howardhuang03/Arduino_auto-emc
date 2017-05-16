@@ -45,6 +45,7 @@ namespace Utils {
     T map(T x, T in_min, T in_max, T out_min, T out_max) {
         float result = (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
         if (result < 0) result = 0;
+        if (result > 100) result = 0;
         return result;
     }
 

@@ -1,16 +1,16 @@
 #include "utils.h"
-#include "con_sensor.h"
+#include "ec_sensor.h"
 
-CONSensor::CONSensor(byte p)
-    :pin(p), currentTemperature(20.0f)
+ECSensor::ECSensor(byte p)
+    :pin(p), EC1Address(EC1Addr), ECSAddress(ECSAddr), currentTemperature(20.0f)
 {}
 
-float CONSensor::getValue() {
-    float v = Utils::analogReadAverage(this->pin, CONAverageSize, CONReadDelay);
-    float con = Utils::map(v, CONSReading, CON1Reading, CONSBuffer, CON1Buffer);
+float ECSensor::getValue() {
+    float v = Utils::analogReadAverage(this->pin, ECAverageSize, ECReadDelay);
+    float ec = Utils::map(v, ECSRaw, EC1Raw, ECSBuffer, EC1Buffer);
 
     // TODO
-    // float ec = 0;
+    // float ec = 0;s
     // float averageVoltage = v * 5000.0f / 1024.0f; // mapping to 5000 mv
     // float tempCoefficient = 1.0 + 0.0185 * (this->currentTemperature - 25.0);
     //
@@ -32,12 +32,20 @@ float CONSensor::getValue() {
     // }
     // this->log(String("CoefficientVolatge: ") + String(coefficientVolatge, 1));
 
-    this->log(String("CON: ") + String(v, 1) + String(", ") + String(con, 2));
-    return con;
+    this->log(String("EC: ") + String(v, 1) + String(", ") + String(ec, 2));
+    return ec;
 }
 
-void CONSensor::setTemperature(float t) {
+void ECSensor::setTemperature(float t) {
     if (t >= 0.0f && t <= 100.0f) {
         this->currentTemperature = t;
     }
+}
+
+void ECSensor::setEC1Raw(float v) {
+    this->EC1Raw = v;
+}
+
+void ECSensor::setECSRaw(float v) {
+    this->ECSRaw = v;
 }

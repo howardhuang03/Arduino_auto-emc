@@ -6,7 +6,7 @@
 #include "sensors/sensor_base.h"
 #include "sensors/ph_sensor.h"
 #include "sensors/t_sensor.h"
-#include "sensors/con_sensor.h"
+#include "sensors/ec_sensor.h"
 #include "sensors/do_sensor.h"
 
 #define version   "1.1.0"
@@ -30,7 +30,7 @@
 
 PHSensor PH(PH_Rx);
 TSensor T(T_Rx);
-CONSensor EC(EC_Rx);
+ECSensor EC(EC_Rx);
 DOSensor DO(DO_Tx, DO_Rx);
 
 int delayTime = 5 * 1000;  // 5s
@@ -124,6 +124,26 @@ void updateSensorInfo() {
   EEPROM.write(addr + 1, 0);
 }*/
 
+float getCalValue(int addr) {
+  float f = 0.0f;
+  EEPROM.get(addr, f);
+  return f;
+}
+
+void SensorInit() {
+  // Setup EC raw data
+  // EEPROM.put(EC.EC1Address, 335.0f);
+  // EEPROM.put(EC.ECSAddress, 401.5f);
+  EC.setEC1Raw(getCalValue(EC.EC1Address));
+  EC.setECSRaw(getCalValue(EC.ECSAddress));
+
+  // Setup sensor debug stream
+  PH.setDebugStream(&debugPort);
+  T.setDebugStream(&debugPort);
+  EC.setDebugStream(&debugPort);
+  DO.setDebugStream(&debugPort);
+}
+
 String getDevName() {
   byte num = 0;
   String name = devName;
@@ -139,10 +159,7 @@ void setup() {
   devName = getDevName();
   debugPort.println(devName + " " + version);
 
-  PH.setDebugStream(&debugPort);
-  T.setDebugStream(&debugPort);
-  EC.setDebugStream(&debugPort);
-  DO.setDebugStream(&debugPort);
+  SensorInit();
 
   Ciao.begin();
   Ciao.write(MQTT, testTopic, devName + "," + version);

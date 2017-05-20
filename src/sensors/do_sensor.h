@@ -15,7 +15,7 @@ public:
     float getValue();
 
     void setTemperature(float t);
-    void setCalibration(float t);
+    void Calibration(float t);
 
 private:
 

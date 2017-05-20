@@ -31,7 +31,7 @@ float DOSensor::getValue() {
         v = result.toFloat();
         this->log(String("DO: ") + String(v, 2));
     } else {
-        this->log("DO read empty value");
+        this->log("DO empty");
     }
 
     return v;
@@ -45,9 +45,9 @@ void DOSensor::setTemperature(float t) {
     }
 }
 
-void DOSensor::setCalibration(float t) {
+void DOSensor::Calibration(float t) {
   String Calibration = "Cal";
-  this->log("DO sensor calibration, temprature: " + String(t, 2));
+  this->log("DO cal, T: " + String(t, 2));
   this->setTemperature(t);
   delay(100);
   this->setValue(Calibration);

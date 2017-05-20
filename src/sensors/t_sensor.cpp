@@ -10,6 +10,6 @@ float TSensor::getValue() {
     tempSensor.requestTemperatures();
     float v = tempSensor.getTempCByIndex(0);
     if (v < 0) v = 0;
-    this->log(String("Temperature: ") + String(v, 2));
+    this->log(String("T: ") + String(v, 2));
     return v;
 }

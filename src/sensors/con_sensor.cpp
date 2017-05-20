@@ -8,19 +8,19 @@ CONSensor::CONSensor(byte p)
 float CONSensor::getValue() {
     float v = Utils::analogReadAverage(this->pin, CONAverageSize, CONReadDelay);
     float con = Utils::map(v, CONSReading, CON1Reading, CONSBuffer, CON1Buffer);
-    
+
     // TODO
     // float ec = 0;
     // float averageVoltage = v * 5000.0f / 1024.0f; // mapping to 5000 mv
     // float tempCoefficient = 1.0 + 0.0185 * (this->currentTemperature - 25.0);
-    // 
-    // float coefficientVolatge=(float)averageVoltage/tempCoefficient;   
+    //
+    // float coefficientVolatge=(float)averageVoltage/tempCoefficient;
     // if(coefficientVolatge < 150) {
     //     //25^C 1413us/cm<-->about 216mv  if the voltage(compensate)<150,that is <1ms/cm,out of the range
-    //     this->log("No solution!");   
+    //     this->log("No solution!");
     // } else if (coefficientVolatge > 3300) {
     //     this->log("Out of the range!");  //>20ms/cm,out of the range
-    // } else { 
+    // } else {
     //     if(coefficientVolatge<=448) {
     //         ec = 6.84*coefficientVolatge-64.32;   //1ms/cm<EC<=3ms/cm
     //     } else if(coefficientVolatge<=1457) {
@@ -31,8 +31,8 @@ float CONSensor::getValue() {
     //     ec /= 1000;    //convert us/cm to ms/cm
     // }
     // this->log(String("CoefficientVolatge: ") + String(coefficientVolatge, 1));
-    
-    this->log(String("CON Reading: ") + String(v, 1) + String(" CON: ") + String(con, 2));
+
+    this->log(String("CON: ") + String(v, 1) + String(", ") + String(con, 2));
     return con;
 }
 

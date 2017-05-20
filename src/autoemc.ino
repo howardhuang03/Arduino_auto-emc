@@ -9,17 +9,16 @@
 #include "sensors/con_sensor.h"
 #include "sensors/do_sensor.h"
 
-#define emcVersion   "1.1.0"
+#define version   "1.1.0"
 // Analog pin definition
-#define pHSensorRx    A0    // PH sensor analog rx
-#define conSensorRx   A1    // Conductivity sensor analog rx
+#define PH_Rx A0   // PH sensor analog rx
+#define EC_Rx A1   // Conductivity sensor analog rx
 // Digital pin definition
-#define tempSensorRx  2    // Temperature sensor digital rx
-#define doSensorRx    3    // DO sensor digital rx using uart protoc
-#define doSensorTx    4    // DO sensor digital tx using uart protoc
+#define T_Rx  2    // Temperature sensor digital rx
+#define DO_Rx 3    // DO sensor digital rx using uart protoc
+#define DO_Tx 4    // DO sensor digital tx using uart protoc
 
 #define debugPort Serial
-#define defaultName "EMC"
 #define dataTopic "channels/local/data"
 // Andy's channel
 //#define dataTopic "channels/225785/publish/4T8RYMGPVKKGT3BL"
@@ -29,96 +28,92 @@
 #define testTopic "channels/local/test"
 #define MQTT "mqtt"
 
-PHSensor phSensor(pHSensorRx);
-TSensor tSensor(tempSensorRx);
-CONSensor conSensor(conSensorRx);
-DOSensor doSensor(doSensorTx, doSensorRx);
+PHSensor PH(PH_Rx);
+TSensor T(T_Rx);
+CONSensor EC(EC_Rx);
+DOSensor DO(DO_Tx, DO_Rx);
 
-int delayTime = 5 * 1000; // 15s
-int updateCount = 12 * 5;   // Update to cloud each delay * updateCount
-int count = 0;
-float T_Sum = 0, PH_Sum = 0, DO_Sum = 0, EC_Sum = 0;
-String deviceName = "";
+int delayTime = 5 * 1000;  // 5s
+int update = 12 * 5;   // Update to cloud each delay * update
+String devName = "EMC";
 
 void readMqttCmd() {
   CiaoData data = Ciao.read(MQTT, cmdTopic);
   String msg = "";
 
-  while (!data.isEmpty()){
+  while (!data.isEmpty()) {
+    /*
     debugPort.print("id=");
     debugPort.println(data.get(0));
     debugPort.print("channel=");
     debugPort.println(data.get(1));
     debugPort.print("payload=");
-    msg = data.get(2);
     debugPort.println(data.get(2));
+    */
+    msg = data.get(2);
     data = Ciao.read(MQTT, cmdTopic);
   }
 
   if (msg.length() == 0) return;
 
   // FIXME hard coded DO calibration
-  doSensor.setCalibration(msg.toInt());
+  DO.Calibration(msg.toInt());
 }
 
-float pHSensorRead() {
-    return phSensor.getValue();
+float readPH() {
+    return PH.getValue();
 }
 
-float conSensorRead(float temp) {
-    conSensor.setTemperature(temp);
-    return conSensor.getValue();
+float readEC(float temp) {
+    EC.setTemperature(temp);
+    return EC.getValue();
 }
 
-float tempSensorRead() {
-  return tSensor.getValue();
+float readT() {
+  return T.getValue();
 }
 
-float doSensorRead(float temp) {
-    doSensor.setTemperature(temp);
-    return doSensor.getValue();
+float readDO(float temp) {
+    DO.setTemperature(temp);
+    return DO.getValue();
 }
 
 void updateSensorInfo() {
-  String mqttMsg;
-  float T = tempSensorRead();
-  float PH = pHSensorRead();
-  float DO = doSensorRead(T);
-  float EC = conSensorRead(T);
+  String msg;
+  float T  = readT();;
 
-  T_Sum += T;
-  PH_Sum += PH;
-  DO_Sum += DO;
-  EC_Sum += EC;
+  static int count = 0;
+  static float T_Sum = 0;
+  static float PH_Sum = 0;
+  static float DO_Sum = 0;
+  static float EC_Sum = 0;
+
   count++;
+  T_Sum += T;
+  PH_Sum += readPH();
+  DO_Sum += readDO(T);
+  EC_Sum += readEC(T);
 
-  if (count == updateCount) {
+  if (count == update) {
     // Process average data & send data to cloud
-    // mqttMsg = String("field1=") + String(T_Sum / count, 2);
-    // mqttMsg += String("&field2=") + String(PH_Sum / count, 2);
-    // mqttMsg += String("&field3=") + String(DO_Sum / count, 2);
-    // mqttMsg += String("&field4=") + String(EC_Sum / count, 2);
+    // msg = String("field1=") + String(T_Sum / count, 2);
+    // msg += String("&field2=") + String(PH_Sum / count, 2);
+    // msg += String("&field3=") + String(DO_Sum / count, 2);
+    // msg += String("&field4=") + String(EC_Sum / count, 2);
     // Process average data & send data to local service
-    mqttMsg = String(deviceName);
-    mqttMsg += String(",") + String(T_Sum / count, 2);
-    mqttMsg += String(",") + String(PH_Sum / count, 2);
-    mqttMsg += String(",") + String(DO_Sum / count, 2);
-    mqttMsg += String(",") + String(EC_Sum / count, 2);
-    debugPort.println(mqttMsg);
-    Ciao.write(MQTT, dataTopic, mqttMsg);
-    resetData();
+    msg = devName;
+    msg += String(",") + String(T_Sum / count, 2);
+    msg += String(",") + String(PH_Sum / count, 2);
+    msg += String(",") + String(DO_Sum / count, 2);
+    msg += String(",") + String(EC_Sum / count, 2);
+    debugPort.println(msg);
+    Ciao.write(MQTT, dataTopic, msg);
+    T_Sum = PH_Sum = DO_Sum = EC_Sum = count = 0;
   }
 }
 
-void resetData() {
-  T_Sum = 0;
-  PH_Sum = 0;
-  DO_Sum = 0;
-  EC_Sum = 0;
-  count = 0;
-}
-
-void writeDeviceNum() {
+// Write flash only
+/*void writeDevNum() {
   int addr = 0;
   // Clear EEPROM
   for (addr = EEPROM.length(); addr >= 0 ; addr--) {
@@ -127,11 +122,11 @@ void writeDeviceNum() {
   // Write EEPROM
   EEPROM.write(addr, 0);
   EEPROM.write(addr + 1, 0);
-}
+}*/
 
-String getDeviceName() {
+String getDevName() {
   byte num = 0;
-  String name = defaultName;
+  String name = devName;
   for (int addr = 0; addr < 2; addr++) {
     num = EEPROM.read(addr);
     name += String(num, 10);
@@ -141,16 +136,16 @@ String getDeviceName() {
 
 void setup() {
   debugPort.begin(115200);
-  deviceName = getDeviceName();
-  debugPort.println("Start " + deviceName + ", Version: "  + emcVersion);
+  devName = getDevName();
+  debugPort.println(devName + " " + version);
 
-  phSensor.setDebugStream(&debugPort);
-  tSensor.setDebugStream(&debugPort);
-  conSensor.setDebugStream(&debugPort);
-  doSensor.setDebugStream(&debugPort);
+  PH.setDebugStream(&debugPort);
+  T.setDebugStream(&debugPort);
+  EC.setDebugStream(&debugPort);
+  DO.setDebugStream(&debugPort);
 
   Ciao.begin();
-  Ciao.write(MQTT, testTopic, deviceName + "," + emcVersion);
+  Ciao.write(MQTT, testTopic, devName + "," + version);
 }
 
 void loop() {

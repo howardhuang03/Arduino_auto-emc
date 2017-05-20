@@ -9,7 +9,7 @@
 #include "sensors/ec_sensor.h"
 #include "sensors/do_sensor.h"
 
-#define version   "1.1.0"
+#define version   "1.1.1"
 // Analog pin definition
 #define PH_Rx A0   // PH sensor analog rx
 #define EC_Rx A1   // Conductivity sensor analog rx

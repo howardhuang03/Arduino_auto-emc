@@ -2,7 +2,7 @@
 #include "ec_sensor.h"
 
 ECSensor::ECSensor(byte p)
-    :pin(p), EC1Address(EC1Addr), ECSAddress(ECSAddr), currentTemperature(20.0f)
+    :pin(p), currentTemperature(20.0f)
 {}
 
 float ECSensor::getValue() {

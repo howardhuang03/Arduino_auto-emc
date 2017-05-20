@@ -18,6 +18,10 @@
 #define DO_Rx 3    // DO sensor digital rx using uart protoc
 #define DO_Tx 4    // DO sensor digital tx using uart protoc
 
+// Flash position
+#define EC1Addr 2 // Flash position for EC1Raw
+#define ECSAddr 6 // Flash position for ECSRaw
+
 #define debugPort Serial
 #define dataTopic "channels/local/data"
 // Andy's channel
@@ -33,8 +37,7 @@ TSensor T(T_Rx);
 ECSensor EC(EC_Rx);
 DOSensor DO(DO_Tx, DO_Rx);
 
-int delayTime = 5 * 1000;  // 5s
-int update = 12 * 5;   // Update to cloud each delay * update
+int update = 60; // Update count, i.e. 5s * 60 = 300s
 String devName = "EMC";
 
 void readMqttCmd() {
@@ -56,8 +59,30 @@ void readMqttCmd() {
 
   if (msg.length() == 0) return;
 
-  // FIXME hard coded DO calibration
-  DO.Calibration(msg.toInt());
+  // Parsing string
+  int idx1 = msg.indexOf(',');
+  //  Search for the next comma just after the first
+  int idx2 = msg.indexOf(',', idx1 + 1);
+
+  String name = msg.substring(0, idx1);
+  String cmd = msg.substring(idx1 + 1, idx2);
+  String val = msg.substring(idx2 + 1); // To the end of the string
+
+  if (name != devName) {
+    debugPort.println("I'm " + devName + ", not " + name);
+    return;
+  }
+
+  // Execute command
+  if (cmd == "DOCAL") DO.Calibration(val.toInt());
+  if (cmd == "EC1RAW") {
+    EEPROM.put(EC1Addr, val.toFloat());
+    EC.setEC1Raw(val.toFloat());
+  }
+  if (cmd == "ECSRAW") {
+    EEPROM.put(ECSAddr, val.toFloat());
+    EC.setECSRaw(val.toFloat());
+  }
 }
 
 float readPH() {
@@ -132,10 +157,10 @@ float getCalValue(int addr) {
 
 void SensorInit() {
   // Setup EC raw data
-  // EEPROM.put(EC.EC1Address, 335.0f);
-  // EEPROM.put(EC.ECSAddress, 401.5f);
-  EC.setEC1Raw(getCalValue(EC.EC1Address));
-  EC.setECSRaw(getCalValue(EC.ECSAddress));
+  //EEPROM.put(EC1Addr, 335.0f);
+  //EEPROM.put(ECSAddr, 401.5f);
+  EC.setEC1Raw(getCalValue(EC1Addr));
+  EC.setECSRaw(getCalValue(ECSAddr));
 
   // Setup sensor debug stream
   PH.setDebugStream(&debugPort);
@@ -162,11 +187,11 @@ void setup() {
   SensorInit();
 
   Ciao.begin();
-  Ciao.write(MQTT, testTopic, devName + "," + version);
+  Ciao.write(MQTT, testTopic, devName + ", " + version);
 }
 
 void loop() {
   updateSensorInfo();
   readMqttCmd();
-  delay(delayTime);
+  delay(5000);
 }
